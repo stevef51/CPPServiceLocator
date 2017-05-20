@@ -66,7 +66,7 @@ load the modules at startup (use configuration to choose which modules are loade
 
 and request your root object(s) 
 
-    auto slc->getContext();
+    auto slc = sl->getContext();
     auto bar = slc->resolve<Bar>();
 
 # Why is it called ServiceLocator but you said it does Dependancy Injection?
