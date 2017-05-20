@@ -1,11 +1,3 @@
-//
-//  main.cpp
-//  example_service_locator
-//
-//  Created by Steve Fillingham on 20/5/17.
-//  Copyright © 2017 MTData. All rights reserved.
-//
-
 #include <iostream>
 #include "ServiceLocator.hpp"
 
