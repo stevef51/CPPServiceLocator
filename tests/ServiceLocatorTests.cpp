@@ -321,6 +321,7 @@ TEST_CASE( "ServiceLocator", "[servicelocator]" ) {
 
             REQUIRE(TestEagerCount == 0);
 
+            // The binding will instantiate when we call getContext()
             auto slc = sl->getContext();
 
             REQUIRE(TestEagerCount == 1);
