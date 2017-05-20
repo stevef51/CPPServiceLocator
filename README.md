@@ -70,7 +70,7 @@ and request your root object(s)
     auto bar = slc->resolve<Bar>();
 
 # Why is it called ServiceLocator but you said it does Dependancy Injection?
-The ServiceLocator class does not do Dependancy Injection on its own which is why I chose not to call it a DependancyInjector - the Dependancy Injection occurs by how you code your bindings.  Using the lambda function bindings to return "new" instances is where the Dependancy Injection occurs, its not Reflection but it works really well (see above, examples/ tests/)
+The ServiceLocator class does not do Dependancy Injection on its own which is why I chose not to call it a DependancyInjector - the Dependancy Injection occurs by how you code your bindings.  Using the lambda function bindings to return "new" instances is where the Dependancy Injection occurs, its not Reflection but it works really well (see above, examples/example_dependancy_injector and tests/)
 
 # Aliases
 Each bind only allows 1 interface to 1 implementation.  Use aliases to bind multiple interfaces to 1 implementation :-
