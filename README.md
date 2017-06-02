@@ -197,11 +197,13 @@ before including "ServiceLocator.hpp"
 It is possible to have ServiceLocator bind an externally allocated instance using the *NoDelete* deallocation method.  This allows these instances lifetime to be controlled externally whilst still allowing them to be ServiceLocator injected.
 
     Poco::AutoPtr<Foo> foo = GetFoo();
-    sl->bind<IFoo>().toInstance<Foo>(foo.get(), ServiceLocator::NoDelete);
+    sl->bind<IFoo>().toInstance(foo.get(), ServiceLocator::NoDelete);
 
     auto foo = slc->resolve<IFoo>();
 
 internally the instance is managed using a std::shared_ptr (*sptr*) but will call the *NoDelete* method (which does nothing) when the shared_ptr reference count reaches 0 allowing the Poco::AutoPtr to continue lifetime management.
+
+Ofcourse when doing this you need to gaurantee that the externally allocated instance does not release the instance during the lifetime of the ServiceLocator.
 
 
 
