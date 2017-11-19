@@ -8,66 +8,78 @@ Supports basic binding to self, interface to implementation class, named binding
 # Usage
 Basics, define interfaces (abstract classes) which client code will use
 
-    class IFoo {
-    public:
-        virtual void fooIt() = 0;
-    };
+```c++
+class IFoo {
+public:
+    virtual void fooIt() = 0;
+};
+```
 
 have other code declare dependency in their constructors 
 
-    class Bar {
-    private:
-       std::shared_ptr<IFoo> _foo;
-    public:
-       Bar(std::shared_ptr<IFoo> foo) : _foo(foo) {
-       }
-       void doFoo() {
-        _foo->fooIt();
-       }
-    };
+```c++
+class Bar {
+private:
+   std::shared_ptr<IFoo> _foo;
+public:
+   Bar(std::shared_ptr<IFoo> foo) : _foo(foo) {
+   }
+   void doFoo() {
+    _foo->fooIt();
+   }
+};
+```
 
 declare implementation classes
 
-    class RedFoo : public IFoo {
-    public:
-      void fooIt() override {
-        std::cout << "RedFoo!\n";
-      }
-    };
+```c++
+class RedFoo : public IFoo {
+public:
+  void fooIt() override {
+    std::cout << "RedFoo!\n";
+  }
+};
+```
 
 declare the bindings in SLModules
 
-    // RedFooSLModule is intimate with RedFoo, it knows what dependencies RedFoo has (in this case none)
-    class RedFooSLModule : public ServiceLocator::Module {
-    public:
-      void load() override {
-        bind<IFoo>().to<RedFoo>([] (SLContext_sptr slc) {
-          return new RedFoo();
-        });
-      }
-    };
+```c++
+// RedFooSLModule is intimate with RedFoo, it knows what dependencies RedFoo has (in this case none)
+class RedFooSLModule : public ServiceLocator::Module {
+public:
+  void load() override {
+    bind<IFoo>().to<RedFoo>([] (SLContext_sptr slc) {
+      return new RedFoo();
+    });
+  }
+};
 
-    // BarSLModule is intimate with Bar, it knows what dependencies Bar has ..
-    class BarSLModule : public ServiceLocator::Module {
-    public:
-      void load() override {
-        bind<Bar>().toSelf([] (SLContext_ptr slc) {
-          return new Bar(
-            slc->resolve<IFoo>()
-          );    
-        })
-      }
-    };
+// BarSLModule is intimate with Bar, it knows what dependencies Bar has ..
+class BarSLModule : public ServiceLocator::Module {
+public:
+  void load() override {
+    bind<Bar>().toSelf([] (SLContext_ptr slc) {
+      return new Bar(
+        slc->resolve<IFoo>()
+      );    
+    })
+  }
+};
+```
 
 load the modules at startup (use configuration to choose which modules are loaded = nice)
 
-    auto sl = ServiceLocator::create();
-    sl->modules().add<RedFooSLModule>().add<BarSLModule>();
+```c++
+auto sl = ServiceLocator::create();
+sl->modules().add<RedFooSLModule>().add<BarSLModule>();
+```
 
 and request your root object(s) 
 
-    auto slc = sl->getContext();
-    auto bar = slc->resolve<Bar>();
+```c++
+auto slc = sl->getContext();
+auto bar = slc->resolve<Bar>();
+```
 
 # Why is it called ServiceLocator but you said it does Dependency Injection?
 The ServiceLocator class does not do Dependency Injection on its own, which is why I chose not to call it a DependencyInjector - the Dependency Injection occurs by how you code your bindings.  Using the lambda function bindings to return "new" instances is where the Dependency Injection occurs. It's not Reflection, but it works really well (see above, examples/example_dependency_injector and tests/)
@@ -75,131 +87,159 @@ The ServiceLocator class does not do Dependency Injection on its own, which is w
 # Aliases
 Each bind only allows 1 interface to 1 implementation.  Use aliases to bind multiple interfaces to 1 implementation :-
 
-    bind<Foo>().toSelf([] (SLContext_sptr) { return new Foo(); });
-    bind<IFoo>().alias<Foo>();
-    bind<IFoo2>().alias<Foo>();
+```c++
+bind<Foo>().toSelf([] (SLContext_sptr) { return new Foo(); });
+bind<IFoo>().alias<Foo>();
+bind<IFoo2>().alias<Foo>();
+```
 
 # Singleton or Transient
 Currently only Transient (default) (new instance on every resolve) and Singleton (same instance globally) are supported.
 
-    bind<IFoo>().to<Foo>([] (SLContext_sptr slc) { return new Foo(); }).asSingleton();
+```c++
+bind<IFoo>().to<Foo>([] (SLContext_sptr slc) { return new Foo(); }).asSingleton();
+```
 
 # Named bindings
 Binding an un-named interface more than once will (within any given ServiceLocator) will throw a DuplicateBindingException, named bindings allow multiples 
 
-    bind<IFoo>("RedFoo").to<RedFoo>([] (SLContext_sptr slc) { return RedFoo(); });
-    bind<IFoo>("BlueFoo").to<BlueFoo>([] (SLContext_sptr slc) { return BlueFoo(); });
+```c++
+bind<IFoo>("RedFoo").to<RedFoo>([] (SLContext_sptr slc) { return RedFoo(); });
+bind<IFoo>("BlueFoo").to<BlueFoo>([] (SLContext_sptr slc) { return BlueFoo(); });
+```
 
 Given above, both bindings can be resolved with resolveAll
 
-    std::vector<sptr<IFoo>> foos;
-    slc->resolveAll<IFoo>(&foos);
+```c++
+std::vector<sptr<IFoo>> foos;
+slc->resolveAll<IFoo>(&foos);
+```
 
 or individually given their name
 
-    auto redFoo = slc->resolve<IFoo>("RedFoo");
-    auto blueFoo = slc->resolve<IFoo>("BlueFoo");
-    
+```c++
+auto redFoo = slc->resolve<IFoo>("RedFoo");
+auto blueFoo = slc->resolve<IFoo>("BlueFoo");
+```
+
 # Child ServiceLocators
 A root level ServiceLocator is created using
 
-    auto parent = ServiceLocator::create();
+```c++
+auto parent = ServiceLocator::create();
+```
 
 child ServiceLocators can be created (deeply nested if needed)
 
-    auto child = parent->enter();
+```c++
+auto child = parent->enter();
+```
 
 bindings within a child do not affect its parent(s), in fact child bindings can override their parent bindings.
-    
-    parent->bind<IBar>().toNoDependency<GreenBar>();
-    parent->bind<IFoo>().toNoDependency<RedFoo>();
-    child->bind<IFoo>().toNoDependency<BlueFoo>();
+
+```c++
+parent->bind<IBar>().toNoDependency<GreenBar>();
+parent->bind<IFoo>().toNoDependency<RedFoo>();
+child->bind<IFoo>().toNoDependency<BlueFoo>();
+```
 
 A child will attempt to resolve within itself first and walk its parent chain until a binding is found before erroring if binding is not found
 
-    auto will_be_BlueFoo = child->resolve<IFoo>();
-    auto will_be_RedFoo = parent->resolve<IFoo>();
-    auto will_be_GreenBar = child->resolve<IBar>();
+```c++
+auto will_be_BlueFoo = child->resolve<IFoo>();
+auto will_be_RedFoo = parent->resolve<IFoo>();
+auto will_be_GreenBar = child->resolve<IBar>();
+```
 
 # Circular dependency detection
 
 It will automatically detect circular dependency between bindings, eg
 
-    class Foo : public IFoo {
-    private:
-      sptr<IBar> _bar;
-    public:
-      Foo(sptr<IBar> bar) : _bar(bar) {
-      }
-    };
-    
-    class Bar : public IBar {
-    private:
-      sptr<IFoo> _foo;
-    public:
-      Bar(sptr<IFoo> foo) : _foo(foo) {
-      }
-    };
-    
-    bind<IFoo>().to<Foo>([] (SLContext_sptr slc) { return new Foo(slc->resolve<IBar>()); }).asSingleton();
-    bind<IBar>().to<Bar>([] (SLContext_sptr slc) { return new Bar(slc->resolve<IFoo>()); }).asSingleton();
-    
-    auto bar = slc->resolve<IBar>();      // will throw CircularDependencyException with a message showing the dependency path
-    
+```c++
+class Foo : public IFoo {
+private:
+  sptr<IBar> _bar;
+public:
+  Foo(sptr<IBar> bar) : _bar(bar) {
+  }
+};
+
+class Bar : public IBar {
+private:
+  sptr<IFoo> _foo;
+public:
+  Bar(sptr<IFoo> foo) : _foo(foo) {
+  }
+};
+
+bind<IFoo>().to<Foo>([] (SLContext_sptr slc) { return new Foo(slc->resolve<IBar>()); }).asSingleton();
+bind<IBar>().to<Bar>([] (SLContext_sptr slc) { return new Bar(slc->resolve<IFoo>()); }).asSingleton();
+
+auto bar = slc->resolve<IBar>();      // will throw CircularDependencyException with a message showing the dependency path
+```
+
 # Working around Circular dependency - Property injection
 
 It is ofcourse better to design your system such that circular dependencies do not occur, but I have found this is sometimes harder than the alternative which is to use Property Injection.  Property Injection resolves the issue since you make 1 of your classes not take its dependency through construction, allowing it to be instantiated and injected into the other class dependant classes constructor, on completion Property Injection resolves the first classes dependency :-
 
-    class Foo : public IFoo {
-    private:
-      sptr<IBar> _bar;
-    public:
-      void setBar(sptr<IBar> bar) { _bar = bar; }
-    };
-    
-    bind<IFoo>().to<Foo>([] (SLContext_sptr slc) {
-      auto foo = new Foo();
-      slc->afterResolve([foo] (SLContext_sptr slc) {
-        foo->setBar(slc->resolve<IBar>());
-      });
-      return foo;
-    }).asSingleton();
-    
+```c++
+class Foo : public IFoo {
+private:
+  sptr<IBar> _bar;
+public:
+  void setBar(sptr<IBar> bar) { _bar = bar; }
+};
+
+bind<IFoo>().to<Foo>([] (SLContext_sptr slc) {
+  auto foo = new Foo();
+  slc->afterResolve([foo] (SLContext_sptr slc) {
+    foo->setBar(slc->resolve<IBar>());
+  });
+  return foo;
+}).asSingleton();
+```
+
 The *afterResolve* method queues a call to the lambda after the root object has been instantiated, avoiding the circular dependency.
 
 Ofcourse the other problem created here is that we now have 2 objects Foo and Bar which hold a shared_ptr reference to each other, even when the ServiceLocator is released (at the end of the program) these 2 objects will continue their lives.  In this case one of them would need to explicitly release the other 
 
-    void onExit() {
-        foo->setBar(nullptr);
-    }
-    
+```c++
+void onExit() {
+    foo->setBar(nullptr);
+}
+```
+
 # sptr -> std::shared_ptr
 At the moment ServiceLocator uses std::shared_ptr to handle instance life times, Singletons are held in memory via a cached std::shared_ptr and all instances are resolved to std::shared_ptr<IFace>
 
 Although untested, it is possible to use a different *shared_ptr* implementation by defining
 
-    #define SERVICELOCATOR_SPTR
-    template <class T>
-    using sptr = boost::shared_ptr<T>;
+```c++
+#define SERVICELOCATOR_SPTR
+template <class T>
+using sptr = boost::shared_ptr<T>;
 
-    template <class T>
-    using const_sptr = boost::shared_ptr<const T>;
+template <class T>
+using const_sptr = boost::shared_ptr<const T>;
 
-    template <class T>
-    using wptr = boost::weak_ptr<T>;
+template <class T>
+using wptr = boost::weak_ptr<T>;
 
-    template <class T>
-    using uptr = boost::unique_ptr<T>;
+template <class T>
+using uptr = boost::unique_ptr<T>;
+```
 
 before including "ServiceLocator.hpp"
 
 # Using externally allocated instances
 It is possible to have ServiceLocator bind an externally allocated instance using the *NoDelete* deallocation method.  This allows these instances lifetime to be controlled externally whilst still allowing them to be ServiceLocator injected.
 
-    Poco::AutoPtr<Foo> foo = GetFoo();
-    sl->bind<IFoo>().toInstance(foo.get(), ServiceLocator::NoDelete);
+```c++
+Poco::AutoPtr<Foo> foo = GetFoo();
+sl->bind<IFoo>().toInstance(foo.get(), ServiceLocator::NoDelete);
 
-    auto foo = slc->resolve<IFoo>();
+auto foo = slc->resolve<IFoo>();
+```
 
 internally the instance is managed using a std::shared_ptr (*sptr*) but will call the *NoDelete* method (which does nothing) when the shared_ptr reference count reaches 0 allowing the Poco::AutoPtr to continue lifetime management.
 
@@ -219,15 +259,17 @@ Issue (2) is my classes were ServiceLocator contaminated - they all took a singl
 
 eg
 
-    #include "ServiceLocator.hpp"       // Yikes, ServiceLocator contamination
-    class Bar {
-    private:
-      std::shared_ptr<IFoo> _foo;
-    public:
-      // CONTAMINATION - My constructor takes a ServiceLocatorContext*, AND my dependencies are hidden until run-time - ouch
-      Bar(SLContext_sptr slc) : _foo(slc->resolve<IFoo>()) {
-      }
-    };
+```c++
+#include "ServiceLocator.hpp"       // Yikes, ServiceLocator contamination
+class Bar {
+private:
+  std::shared_ptr<IFoo> _foo;
+public:
+  // CONTAMINATION - My constructor takes a ServiceLocatorContext*, AND my dependencies are hidden until run-time - ouch
+  Bar(SLContext_sptr slc) : _foo(slc->resolve<IFoo>()) {
+  }
+};
+```
 
 The anti-pattern is the cause of both issues, and the solution to both is quite simple :-
 
