@@ -23,6 +23,8 @@
 #include <set>
 #include <typeindex>
 #include <cxxabi.h>
+#include <functional>
+#include <memory>
 
 #ifndef SERVICELOCATOR_SPTR
 #define SERVICELOCATOR_SPTR
