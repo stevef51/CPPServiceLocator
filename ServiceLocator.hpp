@@ -552,7 +552,7 @@ private:
         }
     };
     
-    // Named locator bindings (simple map from string to NamedServiceLocator)
+    // Typed locator bindings (simple map from type_index to AnyServiceLocator)
     std::map<std::type_index, AnyServiceLocator*> _typed_locators;
     mutable std::list<AnyServiceLocator::loose_binding*> _eagerBindings;
     
